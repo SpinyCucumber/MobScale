@@ -1,0 +1,12 @@
+MultiplierAlert: "Woah! You're killing alot of enemies. Your multiplier is now %!"
+TellMultiplier: "You have a multiplier of %. Frozen: @."
+TellMultiplierOther: "^ currently has a multiplier of %. Frozen: @."
+TellUpdatedMultiplier: "Your multiplier is now %. Frozen: @."
+TellUpdatedMultiplierOther: "^'s multiplier has been changed to %. Frozen: @."
+SuccessfulReload: "The multipliers have been successfully reloaded."
+SuccessfulSave: "The multipliers have been successfully saved."
+
+ColorCode: "&"
+MultiplierCode: "%"
+FrozenCode: "@"
+NameCode: "^"
