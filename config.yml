@@ -1,0 +1,9 @@
+Dealt: 0.0001 #The base amount to add to a player's multiplier when he/she deals damage.
+Received: 0.0002 #The base amount to subtract from a player's multiplier when he/she is dealt damage. (Scaled to damage dealt)
+Default: 1.0 #The multiplier a player receives by default.
+Freeze: false #Whether a player's multiplier is frozen by default or not.
+Minimum: 0.5 #The minimum a player's multiplier can naturally reach.
+Maximum: 2.0 #The maximum a player's multiplier can naturally reach.
+AlwaysNotify: true #Tell a player if their data has been changed by another.
+TellMultiplierIfChangedWithGamemode: false #Tell a player if their multiplier/frozen value has been changed while changing gamemodes.
+Debug: false #Console debug messages.
