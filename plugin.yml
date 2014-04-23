@@ -1,25 +1,25 @@
 name: MobScaler
-main: com.spiny.mobscaler.MobScaler
-version: 1.3
+main: com.spiny.mobscaler.main.MobScaler
+version: 2.0
 commands:
-  mobscale:
-    aliases: ["mob","scale"]
-    descrption: "Parent command for mobscale."
+  mobscaler:
+    aliases: ["mob","scaler"]
+    descrption: "Parent command for mobscaler."
 permissions:
-  mobscale.set:
+  mobscaler.set:
     default: op
-  mobscale.set.other:
+  mobscaler.set.other:
     default: op
-  mobscale.freeze:
+  mobscaler.freeze:
     default: op
-  mobscale.freeze.other:
+  mobscaler.freeze.other:
     default: op
-  mobscale.info:
+  mobscaler.info:
     default: op
-  mobscale.info.other:
+  mobscaler.info.other:
     default: op
-  mobscale.save:
+  mobscaler.save:
     default: op
-  mobscale.reload:
+  mobscaler.reload:
     default: op
   

@@ -7,3 +7,6 @@ Maximum: 2.0 #The maximum a player's multiplier can naturally reach.
 AlwaysNotify: true #Tell a player if their data has been changed by another.
 TellMultiplierIfChangedWithGamemode: false #Tell a player if their multiplier/frozen value has been changed while changing gamemodes.
 Debug: false #Console debug messages.
+
+OldMultiplierFile: "multipliers.bin"
+NewMultiplierFile: "178multipliers.bin"
