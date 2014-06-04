@@ -35,7 +35,6 @@ public class CommandManager implements CommandExecutor {
 			totalCommand = (args.length > 0) ? commandName + " " + StringUtils.join(args, " ") : commandName;
 			this.sender = sender;
 			this.label = label;
-			log("New CommandEvent. TotalCommandString: " + totalCommand + " Sender: " + sender.getName());
 		}
 		
 		public void evaluateParse() {
@@ -45,11 +44,9 @@ public class CommandManager implements CommandExecutor {
 				}
 			});
 			for(CommandData<?> command : commands) {
-				log("Found command: " + command.getKey() + " " + command.getPermission());
 				GateTestSet gts = new GateTestSet();
 				for(CommandEventGate ceg : CommandEventGate.values()) {
 					CommandData<?>.GateTest gt = ceg.justify(this, command);
-					log("Testing: " + ceg.name() + ": " + gt.isDenied() + ", " + gt.getCorrelation());
 					gts.add(gt);
 				}
 				testedCommands.add(gts.merge(false));
@@ -63,7 +60,6 @@ public class CommandManager implements CommandExecutor {
 				sender.sendMessage("Unknown command.");
 				return false;
 			}
-			log("Trying " + fp.getCommand().getKey() + " for " + fp.getCorrelation() + " and " + fp.isDenied());
 			if(!fp.isDenied()) {
 				return fp.getCommand().execute(sender, label, fp.getNewArgs());
 			}
