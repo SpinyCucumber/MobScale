@@ -20,7 +20,7 @@ public class MobScalerAPI {
 	//Restrictive: Freeze if the given multiplier does not meet the criteria (Like when you invoke set command).
 	public static void setMultiplier(Player player, double d, boolean restrictive) {
 		if(restrictive) plugin.setMultiplier(player, d);
-		else plugin.data(player).multiplier = BigDecimal.valueOf(d);
+		else plugin.sData(player).multiplier = BigDecimal.valueOf(d);
 	}
 	
 	//Toggle a player's frozen value similar to the command.
@@ -29,14 +29,14 @@ public class MobScalerAPI {
 	}
 	
 	public static void setFrozen(Player player, boolean frozen) {
-		plugin.data(player).setFrozen(frozen);
+		plugin.sData(player).setFrozen(frozen);
 	}
 	
 	public static double getMultiplier(Player player) {
-		return plugin.data(player).multiplier.doubleValue();
+		return plugin.sData(player).multiplier.doubleValue();
 	}
 	
 	public static boolean getFrozen(Player player) {
-		return plugin.data(player).isFrozen();
+		return plugin.sData(player).isFrozen();
 	}
 }

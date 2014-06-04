@@ -1,10 +1,10 @@
 name: MobScaler
 main: com.spiny.mobscaler.main.MobScaler
-version: 2.0
+version: 3.0
 commands:
   mobscaler:
     aliases: ["mob","scaler"]
-    descrption: "Parent command for mobscaler."
+    description: "Parent command for mobscaler."
 permissions:
   mobscaler.set:
     default: op

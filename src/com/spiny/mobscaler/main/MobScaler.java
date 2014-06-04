@@ -2,7 +2,6 @@ package com.spiny.mobscaler.main;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -13,6 +12,7 @@ import java.util.logging.Level;
 
 import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Creature;
 import org.bukkit.entity.EntityType;
@@ -25,7 +25,7 @@ import org.spiny.nameuuidconverter.NameUUIDMapConverter;
 import org.spiny.nameuuidconverter.NameUUIDMapConverter.NoConvertablesException;
 
 import com.spiny.files.ConfigManager;
-import com.spiny.mobscaler.PlayerArgFilter;
+import com.spiny.mobscaler.command.PlayerArgFilter;
 import com.spiny.mobscaler.listeners.BasicListener;
 import com.spiny.mobscaler.listeners.EntityDamageByEntityListener;
 import com.spiny.mobscaler.listeners.EntityDeathListener;
@@ -39,7 +39,7 @@ import com.spiny.util.entity.ScalableNMSAttribute;
 
 public class MobScaler extends JavaPlugin implements Listener {
 	
-	public Map<Player, RuntimePlayerData> runtimePlayerData = new HashMap<Player, RuntimePlayerData>();
+	public Map<OfflinePlayer, RuntimePlayerData> runtimePlayerData = new HashMap<OfflinePlayer, RuntimePlayerData>();
 	public Map<UUID, SerializablePlayerData> serializablePlayerData = new HashMap<UUID, SerializablePlayerData>();
 	
 	private File multiplierFile;
@@ -53,7 +53,7 @@ public class MobScaler extends JavaPlugin implements Listener {
 	//All passive mobs and ones that should not be considered scalable.
 	public EnumSet<EntityType> nonScalableMobs = EnumSet.of(EntityType.BAT, EntityType.CHICKEN, EntityType.COW, EntityType.PIG, EntityType.SHEEP, EntityType.HORSE, EntityType.OCELOT, EntityType.SQUID, EntityType.PLAYER);
 	
-	@SuppressWarnings({ "static-access", "unchecked" })
+	@SuppressWarnings({ "unchecked" })
 	@Override
 	public void onEnable() {
 		
@@ -98,9 +98,7 @@ public class MobScaler extends JavaPlugin implements Listener {
 		//Internal timer for removing scaled mobs from player data classes (does not actually update attributes) and managing the alarm timer.
 		new BukkitRunnable() {
 			public void run() {
-				for(Entry<Player, RuntimePlayerData> entry : runtimePlayerData.entrySet()) {
-					if(entry.getValue().timer > 0) entry.getValue().timer--;
-					if(entry.getValue().timer == 0) entry.getValue().count = 0;
+				for(Entry<OfflinePlayer, RuntimePlayerData> entry : runtimePlayerData.entrySet()) {
 					for(Entry<LivingEntity, BigDecimal> mobEntry : entry.getValue().scaledMobs.entrySet()) {
 						if(!isValid(mobEntry.getKey(), entry.getKey())) {
 							entry.getValue().remove(mobEntry.getKey());
@@ -110,14 +108,6 @@ public class MobScaler extends JavaPlugin implements Listener {
 				}
 			}
 		}.runTaskTimer(this, 0, 20);
-		
-		logDebug("Initializing player data...");
-		for(Player player : getServer().getOnlinePlayers()) {
-			initPlayerData(player);
-			updateFrozen(player, player.getGameMode());
-		}
-		
-		logDebug(commandManager.getTag() + "Initializing external command database and executors...");
 		
 		initCommands();
 	}
@@ -134,10 +124,10 @@ public class MobScaler extends JavaPlugin implements Listener {
 	}
 	
 	//The initialization of the commands correlated with the 'CommandManager' class follows: (called in onEnable)
-	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private void initCommands() {
-		commandManager = new CommandManager(this).withCommandData(
-			new CommandData("mobscaler", "op", 0, "/mobscaler"){
+		commandManager = new CommandManager(this);
+		commandManager.addCommandData(
+			new CommandData<CommandSender>(CommandSender.class, "mobscaler", "mobscaler", "/mobscaler"){
 				public boolean execute(CommandSender sender, String label, Object[] args) {
 					sender.sendMessage(ChatColor.GRAY + "Below is a list of all mobscaler subcommands:");
 					for(CommandData<?> subCommand : commandManager.getSubCommands("mobscaler")) {
@@ -146,26 +136,29 @@ public class MobScaler extends JavaPlugin implements Listener {
 					return true;
 				}
 			}
-		).withCommandData(
-			new CommandData<Player>("mobscaler info", "mobscaler.info", 0, "/mobscaler info [player]"){
+		);
+		commandManager.addCommandData(
+			new CommandData<Player>(Player.class, "mobscaler info", "mobscaler.info", "/mobscaler info [player]"){
 				public boolean execute(Player sender, String label, Object[] args) {
-					((Player) sender).sendMessage(getMessage("TellMultiplier", (Player) sender));
+					((Player) sender).sendMessage(getMessage("TellMultiplier", (OfflinePlayer) sender));
 					return true;
 				}
 			}
-		).withCommandData(
-			new CommandData("mobscaler info", "mobscaler.info.other", null, new PlayerArgFilter()){
+		);
+		commandManager.addCommandData(
+			new CommandData<CommandSender>(CommandSender.class, "mobscaler info", "mobscaler.info.other", null, new PlayerArgFilter()){
 				public boolean execute(CommandSender sender, String label, Object[] args) {
-					sender.sendMessage(getMessage("TellMultiplierOther", (Player) args[0]));
+					sender.sendMessage(getMessage("TellMultiplierOther", (OfflinePlayer) args[0]));
 					return true;
 				}
 			}
-		).withCommandData(
-			new CommandData<Player>("mobscaler set", "mobscaler.set", 1, "/mobscaler set [player] <multiplier>"){
+		);
+		commandManager.addCommandData(
+			new CommandData<Player>(Player.class, "mobscaler set", "mobscaler.set", "/mobscaler set [player] <multiplier>", 1){
 				public boolean execute(Player sender, String label, Object[] args) {
 					try {
 						setMultiplier(sender, Double.parseDouble((String) args[0]));
-						sender.sendMessage(getMessage("TellUpdatedMultiplier", (Player) sender));
+						sender.sendMessage(getMessage("TellUpdatedMultiplier", (OfflinePlayer) sender));
 						updateMobAttributes(sender, false);
 						return true;
 					} catch(NumberFormatException e) {
@@ -174,13 +167,14 @@ public class MobScaler extends JavaPlugin implements Listener {
 					}
 				}
 			}
-		).withCommandData(
-			new CommandData("mobscaler set", "mobscaler.set.other", null, new PlayerArgFilter(), null){
+		);
+		commandManager.addCommandData(
+			new CommandData<CommandSender>(CommandSender.class, "mobscaler set", "mobscaler.set.other", null, new PlayerArgFilter(), null){
 				public boolean execute(CommandSender sender, String label, Object[] args) {
 					try {
-						setMultiplier((Player) args[0], Double.parseDouble((String) args[1]));
-						sender.sendMessage(getMessage("TellUpdatedMultiplierOther", (Player) args[0]));
-						if(configManager.getConfig("config").getBoolean("AlwaysNotify")) ((Player) args[0]).sendMessage(getMessage("TellUpdatedMultiplier", (Player) args[0]));
+						setMultiplier((OfflinePlayer) args[0], Double.parseDouble((String) args[1]));
+						sender.sendMessage(getMessage("TellUpdatedMultiplierOther", (OfflinePlayer) args[0]));
+						if(configManager.getConfig("config").getBoolean("AlwaysNotify") && args[0] instanceof Player) ((Player) args[0]).sendMessage(getMessage("TellUpdatedMultiplier", (Player) args[0]));
 						updateMobAttributes((Player) args[0], false);
 						return true;
 					} catch(NumberFormatException e) {
@@ -189,41 +183,38 @@ public class MobScaler extends JavaPlugin implements Listener {
 					}
 				}
 			}
-		).withCommandData(
-			new CommandData<Player>("mobscaler freeze", "mobscaler.freeze", 0, "/mobscaler freeze [player]"){
+		);
+		commandManager.addCommandData(
+			new CommandData<Player>(Player.class, "mobscaler freeze", "mobscaler.freeze", "/mobscaler freeze [player]"){
 				public boolean execute(Player sender, String label, Object[] args) {
 					toggleFrozen(sender);
-					sender.sendMessage(getMessage("TellUpdatedMultiplier", (Player) sender));
+					sender.sendMessage(getMessage("TellUpdatedMultiplier", (OfflinePlayer) sender));
 					return true;
 				}
 			}
-		).withCommandData(
-			new CommandData("mobscaler freeze", "mobscaler.freeze.other", null, new PlayerArgFilter()){
+		);
+		commandManager.addCommandData(
+			new CommandData<CommandSender>(CommandSender.class, "mobscaler freeze", "mobscaler.freeze.other", null, new PlayerArgFilter()){
 				public boolean execute(CommandSender sender, String label, Object[] args) {
 					toggleFrozen((Player) args[0]);
-					sender.sendMessage(getMessage("TellUpdatedMultiplierOther", (Player) args[0]));
-					if(configManager.getConfig("config").getBoolean("AlwaysNotify")) ((Player) args[0]).sendMessage(getMessage("TellUpdatedMultiplier", (Player) args[0]));
+					sender.sendMessage(getMessage("TellUpdatedMultiplierOther", (OfflinePlayer) args[0]));
+					if(configManager.getConfig("config").getBoolean("AlwaysNotify") && args[0] instanceof Player) ((Player) args[0]).sendMessage(getMessage("TellUpdatedMultiplier", (Player) args[0]));
 					return true;
 				}
 			}
-		).withCommandData(
-			new CommandData("mobscaler reload", "mobscaler.reload", 0, "/mobscaler reload"){
+		);
+		commandManager.addCommandData(
+			new CommandData<CommandSender>(CommandSender.class, "mobscaler reload", "mobscaler.reload", "/mobscaler reload"){
 				public boolean execute(CommandSender sender, String label, Object[] args) {
-					try {
-						serializablePlayerData = (Map<UUID, SerializablePlayerData>) ObjectIOStreamUtil.load(multiplierFile);
-					} catch (FileNotFoundException e) {
-						try {
-							multiplierFile.createNewFile();
-						} catch (IOException e1) {
-							e1.printStackTrace();
-						}
-					}
+					ObjectIOStreamUtil.save(multiplierFile, serializablePlayerData);
+					configManager = new ConfigManager(MobScaler.this, new String[]{"messages.yml"});
 					sender.sendMessage(getMessage("SuccessfulReload", null));
 					return true;
 				}
 			}
-		).withCommandData(
-			new CommandData("mobscaler save", "mobscaler.save", 0, "/mobscaler save"){
+		);
+		commandManager.addCommandData(
+			new CommandData<CommandSender>(CommandSender.class, "mobscaler save", "mobscaler.save", "/mobscaler save"){
 				public boolean execute(CommandSender sender, String label, Object[] args) {
 					ObjectIOStreamUtil.save(multiplierFile, serializablePlayerData);
 					sender.sendMessage(getMessage("SuccessfulSave", null));
@@ -233,45 +224,46 @@ public class MobScaler extends JavaPlugin implements Listener {
 		);
 	}
 	
-	//Generic initialization of player data; called on joins and enables.
-	public void initPlayerData(Player player) {
-		try {
-			converter.update(player);
-		} catch (NullPointerException e) {
-			logDebug("Converter has nothing to convert...");
-		}
-		if(!serializablePlayerData.containsKey(player.getUniqueId())) serializablePlayerData.put(player.getUniqueId(), new SerializablePlayerData(new BigDecimal(getConfig().getDouble("Default")), getConfig().getBoolean("Freeze")));
-		runtimePlayerData.put(player, new RuntimePlayerData(false));
+	//Generic initialization of player data; called when data is null
+	public SerializablePlayerData newSerializablePlayerData() {
+	
+		return new SerializablePlayerData(new BigDecimal(getConfig().getDouble("Default")), getConfig().getBoolean("Freeze"));
+
+	}
+	
+	public RuntimePlayerData newRuntimePlayerData() {
+		
+		return new RuntimePlayerData(false);
+		
 	}
 	
 	public void updateFrozen(Player player, GameMode gm) {
-		SerializablePlayerData data = serializablePlayerData.get(player.getUniqueId());
+		SerializablePlayerData data = sData(player);
 		boolean oldFrozen = data.isFrozen();
 		if(gm == GameMode.CREATIVE) data.setFrozen(true);
-		else data.setFrozen(runtimePlayerData.get(player).getWasFrozen());
+		else data.setFrozen(rData(player).getWasFrozen());
 		if(oldFrozen != data.isFrozen() && configManager.getConfig("config").getBoolean("TellMultiplierIfChangedWithGamemode")) player.sendMessage(getMessage("TellUpdatedMultiplier", player));
-		serializablePlayerData.put(player.getUniqueId(), data);
 	}
 	
-	public String getMessage(String path, Player player) {
+	public String getMessage(String path, OfflinePlayer args) {
 		
 		String message = configManager.getConfig("messages").getString(path);
-		if(player != null) {
-			SerializablePlayerData data = serializablePlayerData.get(player.getUniqueId());
+		if(args != null) {
+			SerializablePlayerData data = sData(args);
 			message = message.replace(configManager.getConfig("messages").getString("MultiplierCode"), String.valueOf(data.multiplier));
 			message = message.replace(configManager.getConfig("messages").getString("FrozenCode"), String.valueOf(data.isFrozen()));
-			message = message.replace(configManager.getConfig("messages").getString("NameCode"), player.getName());
+			message = message.replace(configManager.getConfig("messages").getString("NameCode"), args.getName());
 		}
 		message = ChatColor.translateAlternateColorCodes(configManager.getConfig("messages").getString("ColorCode").charAt(0), message);
 		
 		return message;
 	}
 	
-	public void updateMobAttributes(Player player, boolean b) {
+	public void updateMobAttributes(OfflinePlayer player, boolean b) {
 		logDebug("Updating attributes for " + player.getName());
-		RuntimePlayerData data = runtimePlayerData.get(player);
+		RuntimePlayerData data = rData(player);
 		for(Entry<LivingEntity, BigDecimal> entry : data.scaledMobs.entrySet()) {
-			updateAttributes(entry.getKey(), entry.getValue(), serializablePlayerData.get(player.getUniqueId()).multiplier, b);
+			updateAttributes(entry.getKey(), entry.getValue(), sData(player).multiplier, b);
 		}
 	}
 	
@@ -281,8 +273,8 @@ public class MobScaler extends JavaPlugin implements Listener {
 		MobUtil.scaleMaxHealth(mob, baseHealth, multiplier, b);
 	}
 
-	public void setMultiplier(Player player, double d) {
-		SerializablePlayerData data = serializablePlayerData.get(player.getUniqueId());
+	public void setMultiplier(OfflinePlayer player, double d) {
+		SerializablePlayerData data = sData(player);
 		data.multiplier = BigDecimal.valueOf(d);
 		if(data.multiplier.doubleValue() < configManager.getConfig("config").getDouble("Minimum")
 			|| data.multiplier.doubleValue() > configManager.getConfig("config").getDouble("Maximum")) {
@@ -291,10 +283,10 @@ public class MobScaler extends JavaPlugin implements Listener {
 		setWasFrozen(player, data.isFrozen());
 	}
 	
-	public void modMultiplier(Player player, BigDecimal d) {
+	public void modMultiplier(OfflinePlayer player, BigDecimal d) {
 		double minimum = configManager.getConfig("config").getDouble("Minimum");
 		double maximum = configManager.getConfig("config").getDouble("Maximum");
-		SerializablePlayerData data = serializablePlayerData.get(player.getUniqueId());
+		SerializablePlayerData data = sData(player);
 		if(!data.isFrozen()) {
 			if(data.multiplier.add(d).doubleValue() > maximum) data.multiplier = BigDecimal.valueOf(maximum);
 			else if(data.multiplier.add(d).doubleValue() < minimum) data.multiplier = BigDecimal.valueOf(minimum);
@@ -302,8 +294,8 @@ public class MobScaler extends JavaPlugin implements Listener {
 		}
 	}
 	
-	public void toggleFrozen(Player player) {
-		SerializablePlayerData data = serializablePlayerData.get(player.getUniqueId());
+	public void toggleFrozen(OfflinePlayer player) {
+		SerializablePlayerData data = sData(player);
 		data.setFrozen(!data.isFrozen());
 		if(!data.isFrozen()) {
 			if(data.multiplier.doubleValue() < configManager.getConfig("config.yml").getDouble("Minimum")
@@ -314,33 +306,45 @@ public class MobScaler extends JavaPlugin implements Listener {
 		setWasFrozen(player, data.isFrozen());
 	}
 	
-	private void setWasFrozen(Player player, boolean f) {
-		RuntimePlayerData data = runtimePlayerData.get(player);
+	private void setWasFrozen(OfflinePlayer player, boolean f) {
+		RuntimePlayerData data = rData(player);
 		data.setWasFrozen(f);
-		runtimePlayerData.put(player, data);
 	}
 	
 	//Checks if a mob is fit for artificial augmentation by the system.
-	public boolean isValid(LivingEntity mob, LivingEntity target) {
+	public boolean isValid(LivingEntity mob, OfflinePlayer offlinePlayer) {
 		boolean c = mob != null;
 		if(c) {
 			if(mob instanceof Creature) {
 				if(((Creature) mob).getTarget() == null) c = false; 
-				else c = ((Creature) mob).getTarget().equals(target);
+				else c = ((Creature) mob).getTarget().equals(offlinePlayer);
 			}
 			if(mob.isDead()) c = false;
 		}
 		return c;
 	}
 	
-	public SerializablePlayerData data(Player player) {
-		return serializablePlayerData.get(player.getName());
+	public SerializablePlayerData sData(OfflinePlayer p) {
+		SerializablePlayerData d = serializablePlayerData.get(p.getUniqueId());
+		if(d == null) {
+			d = this.newSerializablePlayerData();
+			serializablePlayerData.put(p.getUniqueId(), d);
+		}
+		return d;
+	}
+	
+	public RuntimePlayerData rData(OfflinePlayer p) {
+		RuntimePlayerData d = runtimePlayerData.get(p);
+		if(d == null) {
+			d = this.newRuntimePlayerData();
+			runtimePlayerData.put(p, d);
+		}
+		return d;
 	}
 	
 	public void logDebug(String log) {
 		if(!configManager.getConfig("config").getBoolean("Debug")) return;
 		getLogger().log(Level.INFO, log);
 	}
-	
 	
 }

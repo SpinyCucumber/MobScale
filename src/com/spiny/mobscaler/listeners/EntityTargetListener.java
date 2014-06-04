@@ -19,11 +19,10 @@ public class EntityTargetListener extends BasicListener<MobScaler> {
 		LivingEntity mob = (LivingEntity) (event.getEntity());
 		Player player = (Player) (event.getTarget());
 		
-		RuntimePlayerData data = plugin.runtimePlayerData.get(player);
+		RuntimePlayerData data = plugin.rData(player);
 		if(!data.scaledMobs.containsKey(mob) && player.getGameMode() != GameMode.CREATIVE) {
 			BigDecimal h = BigDecimal.valueOf(Math.round(mob.getMaxHealth()));
 			plugin.logDebug("Added " + mob.getType().name() + " to " + player.getName() + " with " + h + " base health.");
-			data.scaledMobs.put(mob, h);
 			plugin.updateMobAttributes(player, false);
 		}
 	}

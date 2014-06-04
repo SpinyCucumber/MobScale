@@ -18,10 +18,10 @@ public class PlayerUtil {
 		server = newServer;
 	}
 	
-	public static OfflinePlayer getPlayerFromName(String name) throws NullPointerException {
+	public static OfflinePlayer getPlayerFromName(String name) {
 		for(OfflinePlayer player : server.getOfflinePlayers()) {
 			if(player.getName().startsWith(name)) return player;
 		}
-		throw new NullPointerException();
+		return null;
 	}
 }

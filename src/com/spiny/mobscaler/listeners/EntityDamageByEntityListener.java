@@ -30,7 +30,7 @@ public class EntityDamageByEntityListener extends BasicListener<MobScaler> {
 		}
 		else if(entity instanceof Player && !plugin.nonScalableMobs.contains(damager.getType())) {
 			plugin.modMultiplier((Player) entity, BigDecimal.valueOf(plugin.configManager.getConfig("config").getDouble("Dealt")).multiply(BigDecimal.valueOf(damage)).multiply(BigDecimal.valueOf(-1)));
-			event.setDamage(damage * plugin.serializablePlayerData.get(((Player) entity).getUniqueId()).multiplier.doubleValue());
+			event.setDamage(damage * plugin.sData((Player) entity).multiplier.doubleValue());
 			plugin.updateMobAttributes((Player) entity, true);
 		}
 	}

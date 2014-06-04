@@ -12,9 +12,6 @@ import com.spiny.util.entity.ScalableNMSAttribute;
 
 public class RuntimePlayerData {
 	
-	public int count;
-	public int timer;
-	
 	private boolean wasFrozen;
 	
 	public Map<LivingEntity, BigDecimal> scaledMobs = new HashMap<LivingEntity, BigDecimal>();
@@ -26,8 +23,6 @@ public class RuntimePlayerData {
 	}
  	
 	public RuntimePlayerData(boolean wasFrozen) {
-		this.count = 0;
-		this.timer = 0;
 		this.wasFrozen = wasFrozen;
 	}
 
